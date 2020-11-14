@@ -28,7 +28,7 @@ module.exports = app => {
         })
     }
 
-    const versaoNFS = async (req, res) => {
+    const versaoNfse = async (req, res) => {
         soap.createClient(url, options, function (err, client) {
             if (err) {
                 console.log(err);
@@ -48,10 +48,10 @@ module.exports = app => {
         })
     }
 
-    const emitirNFS = (req, res) => {
+    const gerarNfse = (req, res) => {
     }
 
-    const consultaNFS = (req, res) => {
+    const consultarNfse = (req, res) => {
         try {
             existsOrError(req.params.notaFiscal, 'Informe o número da nota')
             existsOrError(req.query.cnpj, 'Informe o CNPJ da empresa')
@@ -89,7 +89,7 @@ module.exports = app => {
         })
     }
 
-    const consultaLoteNFS = (req, res) => {
+    const consultarLoteRps = (req, res) => {
         try {
             existsOrError(req.query.dataInicial, 'Informe uma data inicial')
             existsOrError(req.query.dataFinal, 'Informe uma data final')
@@ -129,8 +129,8 @@ module.exports = app => {
         })
     }
 
-    const cancelaNFS = (req, res) => {
+    const cancelarNfse = (req, res) => {
     }
 
-    return { statusService, versaoNFS, emitirNFS, consultaLoteNFS, consultaNFS, cancelaNFS }
+    return { statusService, versaoNfse, gerarNfse, consultarLoteRps, consultarNfse, cancelarNfse }
 }
