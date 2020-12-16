@@ -1,7 +1,13 @@
+const fs = require('fs');
 const soap = require('soap');
 const url = process.env.NFS_URL;
 
-var options = {
+const { isCNPJ } = require('brazilian-values')
+
+const reports = require('./report')
+const pdfGenerator = require('html-pdf')
+
+const options = {
     wsdl_options: {
         forever: true,
         rejectUnauthorized: false,
@@ -17,7 +23,7 @@ var options = {
 module.exports = app => {
     const { existsOrError } = app.config.validation
 
-    const statusService = (req, res) => {
+    const statusService = async (req, res) => {
         soap.createClient(url, options, function (err, client) {
             if (err) {
                 console.log(err);
@@ -48,15 +54,22 @@ module.exports = app => {
         })
     }
 
-    const gerarNfse = (req, res) => {
+    const gerarNfse = async (req, res) => {
     }
 
-    const consultarNfse = (req, res) => {
+    const consultarNfse = async (req, res) => {
+        const data = { ...req.body }
+
         try {
-            existsOrError(req.params.notaFiscal, 'Informe o número da nota')
-            existsOrError(req.query.cnpj, 'Informe o CNPJ da empresa')
-            existsOrError(req.query.inscricaoMunicipal, 'Informe a inscrição municipal da empresa')
-            existsOrError(req.query.senha, 'Informe a senha do portal simpliss')
+            existsOrError(data.cnpj, 'Informe o CNPJ da empresa')
+            existsOrError(data.inscricaoMunicipal, 'Informe a inscrição municipal da empresa')
+            existsOrError(data.senha, 'Informe a senha do portal simpliss')
+
+            data.cnpj = data.cnpj.replace(/[^\d]+/g, '')
+
+            if (!isCNPJ(data.cnpj)) {
+                throw "Informe um cnpj válido"
+            }
         } catch (e) {
             return res.status(400).send(e.toString())
         }
@@ -72,16 +85,22 @@ module.exports = app => {
             server.ConsultarNfse({
                 ConsultarNfseEnvio: {
                     Prestador: {
-                        Cnpj: req.query.cnpj,
-                        InscricaoMunicipal: req.query.inscricaoMunicipal
+                        Cnpj: data.cnpj,
+                        InscricaoMunicipal: data.inscricaoMunicipal
                     },
                     NumeroNfse: req.params.notaFiscal
                 },
-                pParam: { P1: req.query.cnpj, P2: req.query.senha }
-            }, (err, result, xmlResponse) => {
+                pParam: { P1: data.cnpj, P2: data.senha }
+            }, (err, result, xmlResponseString) => {
                 if (err) {
                     console.log(err);
                     return res.status(500).send('Erro ao consultar Nota fiscal')
+                }
+
+                if (result.ConsultarNfseResult.ListaMensagemRetorno && result.ConsultarNfseResult.ListaMensagemRetorno.MensagemRetorno) {
+                    if (Array.isArray(result.ConsultarNfseResult.ListaMensagemRetorno.MensagemRetorno))
+                        return res.status(400).send(result.ConsultarNfseResult.ListaMensagemRetorno.MensagemRetorno[0].Mensagem)
+                    return res.status(400).send(result.ConsultarNfseResult.ListaMensagemRetorno.MensagemRetorno.Mensagem)
                 }
 
                 return res.json(result.ConsultarNfseResult.ListaNfse.CompNfse.Nfse)
@@ -89,13 +108,24 @@ module.exports = app => {
         })
     }
 
-    const consultarLoteRps = (req, res) => {
+    const cancelarNfse = async (req, res) => {
+    }
+
+    const consultarLoteRps = async (req, res) => {
+        const data = { ...req.body }
+
         try {
-            existsOrError(req.query.dataInicial, 'Informe uma data inicial')
-            existsOrError(req.query.dataFinal, 'Informe uma data final')
-            existsOrError(req.query.cnpj, 'Informe o CNPJ da empresa')
-            existsOrError(req.query.inscricaoMunicipal, 'Informe a inscrição municipal da empresa')
-            existsOrError(req.query.senha, 'Informe a senha do portal simpliss')
+            existsOrError(data.dataInicial, 'Informe uma data inicial')
+            existsOrError(data.dataFinal, 'Informe uma data final')
+            existsOrError(data.cnpj, 'Informe o CNPJ da empresa')
+            existsOrError(data.inscricaoMunicipal, 'Informe a inscrição municipal da empresa')
+            existsOrError(data.senha, 'Informe a senha do portal simpliss')
+
+            data.cnpj = data.cnpj.replace(/[^\d]+/g, '')
+
+            if (!isCNPJ(data.cnpj)) {
+                throw "Informe um cnpj válido"
+            }
         } catch (e) {
             return res.status(400).send(e.toString())
         }
@@ -111,13 +141,13 @@ module.exports = app => {
             server.ConsultarNfse({
                 ConsultarNfseEnvio: {
                     Prestador: {
-                        Cnpj: req.query.cnpj,
-                        InscricaoMunicipal: req.query.inscricaoMunicipal
+                        Cnpj: data.cnpj,
+                        InscricaoMunicipal: data.inscricaoMunicipal
                     },
-                    DataInicial: req.query.dataInicial,
-                    DataFinal: req.query.dataFinal
+                    DataInicial: data.dataInicial,
+                    DataFinal: data.dataFinal
                 },
-                pParam: { P1: req.query.cnpj, P2: req.query.senha }
+                pParam: { P1: data.cnpj, P2: data.senha }
             }, (err, result, xmlResponse) => {
                 if (err) {
                     console.log(err);
@@ -129,8 +159,137 @@ module.exports = app => {
         })
     }
 
-    const cancelarNfse = (req, res) => {
+    const consultarSituacaoLoteRps = async (req, res) => {
+        const data = { ...req.body }
+
+        try {
+            existsOrError(data.protocolo, 'Informe o protocolo do lote RPS')
+            existsOrError(data.cnpj, 'Informe o CNPJ da empresa')
+            existsOrError(data.inscricaoMunicipal, 'Informe a inscrição municipal da empresa')
+            existsOrError(data.senha, 'Informe a senha do portal simpliss')
+
+            data.cnpj = data.cnpj.replace(/[^\d]+/g, '')
+
+            if (!isCNPJ(data.cnpj)) {
+                throw "Informe um cnpj válido"
+            }
+        } catch (e) {
+            return res.status(400).send(e.toString())
+        }
+
+        soap.createClient(url, options, function (err, client) {
+            if (err) {
+                console.log(err);
+                return res.status(500).send('Não foi possível conectar-se ao servidor da prefeitura')
+            }
+
+            const server = client.NfseService.BasicHttpBinding_INfseService
+
+            server.ConsultarSituacaoLoteRps({
+                ConsultarSituacaoLoteRpsEnvio: {
+                    Protocolo: data.protocolo,
+                    Prestador: {
+                        Cnpj: data.cnpj,
+                        InscricaoMunicipal: data.inscricaoMunicipal
+                    },
+                },
+                pParam: { P1: data.cnpj, P2: data.senha }
+            }, (err, result, xmlResponse) => {
+                if (err) {
+                    console.log(err);
+                    return res.status(500).send('Erro ao consultar situação do lote RPS')
+                }
+
+                if (result.ConsultarSituacaoLoteRpsResult.ListaMensagemRetorno && result.ConsultarSituacaoLoteRpsResult.ListaMensagemRetorno.MensagemRetorno) {
+                    if (Array.isArray(result.ConsultarSituacaoLoteRpsResult.ListaMensagemRetorno.MensagemRetorno))
+                        return res.status(400).send(result.ConsultarSituacaoLoteRpsResult.ListaMensagemRetorno.MensagemRetorno[0].Mensagem)
+                    return res.status(400).send(result.ConsultarSituacaoLoteRpsResult.ListaMensagemRetorno.MensagemRetorno.Mensagem)
+                }
+
+                return res.json(result.ConsultarSituacaoLoteRpsResult)
+            })
+        })
     }
 
-    return { statusService, versaoNfse, gerarNfse, consultarLoteRps, consultarNfse, cancelarNfse }
+    const consultarNfsePorRps = async (req, res) => { }
+
+    // const saveXml = (nome = "temp", xmlString) => {
+    //     fs.writeFile(`${nome}.xml`, xmlResponseString, function (err) {
+    //         if (err) {
+    //             console.log(err)
+    //             return
+    //         }
+    //     });
+    // }
+
+    const gerarPdf = async (req, res) => {
+        const data = { ...req.body }
+
+        try {
+            existsOrError(data.notaFiscal, 'Informe a nota fiscal que deseja gerar o PDF')
+            existsOrError(data.cnpj, 'Informe o CNPJ da empresa')
+            existsOrError(data.inscricaoMunicipal, 'Informe a inscrição municipal da empresa')
+            existsOrError(data.senha, 'Informe a senha do portal simpliss')
+
+            data.cnpj = data.cnpj.replace(/[^\d]+/g, '')
+
+            if (!isCNPJ(data.cnpj)) {
+                throw "Informe um cnpj válido"
+            }
+        } catch (error) {
+            return res.status(500).send(error)
+        }
+
+        soap.createClient(url, options, function (err, client) {
+            if (err) {
+                console.log(err);
+                return res.status(500).send('Não foi possível conectar-se ao servidor da prefeitura')
+            }
+
+            const server = client.NfseService.BasicHttpBinding_INfseService
+
+            server.ConsultarNfse({
+                ConsultarNfseEnvio: {
+                    Prestador: {
+                        Cnpj: data.cnpj,
+                        InscricaoMunicipal: data.inscricaoMunicipal
+                    },
+                    NumeroNfse: data.notaFiscal
+                },
+                pParam: { P1: data.cnpj, P2: data.senha }
+            }, (err, result, xmlResponseString) => {
+                if (err) {
+                    console.log(err);
+                    return res.status(500).send('Erro ao consultar Nota fiscal')
+                }
+
+                if (result.ConsultarNfseResult.ListaMensagemRetorno && result.ConsultarNfseResult.ListaMensagemRetorno.MensagemRetorno) {
+                    if (Array.isArray(result.ConsultarNfseResult.ListaMensagemRetorno.MensagemRetorno))
+                        return res.status(400).send(result.ConsultarNfseResult.ListaMensagemRetorno.MensagemRetorno[0].Mensagem)
+                    return res.status(400).send(result.ConsultarNfseResult.ListaMensagemRetorno.MensagemRetorno.Mensagem)
+                }
+
+                const numeroNotaFiscal = result.ConsultarNfseResult.ListaNfse.CompNfse.Nfse.InfNfse.Numero
+
+                pdfGenerator.create(reports.danfseHtml(result.ConsultarNfseResult.ListaNfse.CompNfse.Nfse.InfNfse), options).toFile(`./pdfs/${numeroNotaFiscal}.pdf`, function (err, file) {
+                    if (err) return res.status(500).send('Erro ao gerar PDF, tente novamente mais tarde')
+                    // console.log(response); // { filename: 'views/banco.pdf' } 
+
+                    res.status(200).send(`pdfs/${numeroNotaFiscal}.pdf`)
+                });
+            })
+        })
+    }
+
+    return {
+        statusService,
+        versaoNfse,
+        gerarNfse,
+        consultarNfse,
+        cancelarNfse,
+        consultarLoteRps,
+        consultarSituacaoLoteRps,
+        consultarNfsePorRps,
+        gerarPdf
+    }
 }
