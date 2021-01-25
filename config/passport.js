@@ -9,7 +9,11 @@ module.exports = app => {
     }
 
     const bearerStrategy = new Strategy(params, (payload, done) => {
-        done(null, payload)
+        app.commonDB('usuario')
+            .where({ id: payload.id })
+            .first()
+            .then(user => done(null, user ? payload : false))
+            .catch(err => done(err, false))
     })
 
     passport.use(bearerStrategy)

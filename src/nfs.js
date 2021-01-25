@@ -1,6 +1,6 @@
-const fs = require('fs');
 const soap = require('soap');
 const url = process.env.NFS_URL;
+const axios = require('axios');
 
 const { isCNPJ } = require('brazilian-values')
 
@@ -55,6 +55,133 @@ module.exports = app => {
     }
 
     const gerarNfse = async (req, res) => {
+        const data = { ...req.body }
+
+        try {
+            existsOrError(data.cnpj, 'Informe o CNPJ da empresa')
+            existsOrError(data.inscricaoMunicipal, 'Informe a inscrição municipal da empresa')
+            existsOrError(data.senha, 'Informe a senha do portal simpliss')
+            existsOrError(data.prestacaoServico, 'Informe a prestação de serviço para a geração da nota fiscal')
+
+            data.cnpj = data.cnpj.replace(/[^\d]+/g, '')
+
+            if (!isCNPJ(data.cnpj)) {
+                throw "Informe um cnpj válido"
+            }
+        } catch (e) {
+            return res.status(400).send(e.toString())
+        }
+
+        soap.createClient(url, options, function (err, client) {
+            if (err) {
+                console.log(err);
+                return res.status(500).send('Não foi possível conectar-se ao servidor da prefeitura')
+            }
+
+            console.log({
+                Valores: {
+                    ValorServicos: data.prestacaoServico.valorServicos,
+                    ValorDeducoes: 0,
+                    ValorPis: 0,
+                    ValorCofins: 0,
+                    ValorInss: 0,
+                    ValorIr: 0,
+                    ValorCsll: 0,
+                    issRetido: 0,
+                    ValorIss: 0,
+                    OutrasRetencoes: 0,
+                    BaseCalculo: data.prestacaoServico.valorServicos,
+                    Aliquota: data.prestacaoServico.imposto.iss
+                },
+                ItemListaServico: data.prestacaoServico.imposto.enquadramentoServico,
+                CodigoCnae: data.prestacaoServico.imposto.cnae,
+                CodigoTributacaoMunicipio: data.prestacaoServico.imposto.enquadramentoServico,
+                Discriminacao: data.prestacaoServico.observacao,
+                CodigoMunicipio: '3541406',
+                ItensServico: data.prestacaoServico.servicos
+            })
+            // return res.status(500).send('Função em desenvolvimento')
+
+            const server = client.NfseService.BasicHttpBinding_INfseService
+
+            server.GerarNfse({
+                GerarNovaNfseEnvio: {
+                    Prestador: {
+                        Cnpj: data.cnpj,
+                        InscricaoMunicipal: data.inscricaoMunicipal
+                    },
+                    InformacaoNfse: {
+                        NaturezeOperacao: 1,
+                        RegimeEspecialTributacao: 6,
+                        OptanteSimplesNacional: data.prestacaoServico.imposto.simplesNacional ? 1 : 2,
+                        IcentivadorCultural: 2,
+                        Status: 1,
+                        Serie: 'E',
+                        Competencia: new Date(data.prestacaoServico.dataPrestacaoServico).toISOString().substr(0, 10),
+                        OutrasInformacoes: data.prestacaoServico.descricao,
+                        Servico: {
+                            Valores: {
+                                ValorServicos: data.prestacaoServico.valorServicos,
+                                ValorDeducoes: 0,
+                                ValorPis: 0,
+                                ValorCofins: 0,
+                                ValorInss: 0,
+                                ValorIr: 0,
+                                ValorCsll: 0,
+                                issRetido: 0,
+                                ValorIss: 0,
+                                OutrasRetencoes: 0,
+                                BaseCalculo: data.prestacaoServico.valorServicos,
+                                Aliquota: data.prestacaoServico.imposto.iss
+                            },
+                            ItemListaServico: data.prestacaoServico.imposto.enquadramentoServico,
+                            CodigoCnae: data.prestacaoServico.imposto.cnae,
+                            CodigoTributacaoMunicipio: data.prestacaoServico.imposto.enquadramentoServico,
+                            Discriminacao: data.prestacaoServico.observacao,
+                            CodigoMunicipio: '3541406',
+                            ItensServico: data.prestacaoServico.servicos
+                        },
+                        Tomador: {
+                            IdentificacaoTomador: {
+                                RazaoSocial: data.prestacaoServico.pessoa.nome,
+                                CpfCnpj: data.prestacaoServico.pessoa.cpfCnpj,
+                                InscricaoEstadual: data.prestacaoServico.pessoa.registro,
+                            },
+                            Endereco: {
+                                Cep: data.prestacaoServico.pessoa.cep,
+                                Uf: data.prestacaoServico.pessoa.uf,
+                                Bairro: data.prestacaoServico.pessoa.bairro,
+                                Endereco: data.prestacaoServico.pessoa.logradouro,
+                                Numero: data.prestacaoServico.pessoa.numero,
+                                Complemento: data.prestacaoServico.pessoa.complemento
+                            },
+                            Contato: {
+                                Telefone: data.prestacaoServico.pessoa.contato1,
+                                Email: data.prestacaoServico.pessoa.email1
+                            }
+                        }
+                    }
+                },
+                pParam: { P1: data.cnpj, P2: data.senha }
+            }, (err, result, xmlResponseString) => {
+                if (err) {
+                    if (err.response.statusCode == 500)
+                        return res.status(500).send('Erro no servidor da prefeitura ao gerar NFSe, tente novamente mais tarde')
+
+                    return res.status(500).send('Erro ao gerar NFSe, verifique os dados da prestação de serviço e impostos')
+                }
+
+                console.log(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
+
+                if (result.GerarNfseResult.ListaMensagemRetorno && result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno) {
+                    if (Array.isArray(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno))
+                        return res.status(400).send(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno[0].Mensagem)
+                    return res.status(400).send(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno.Mensagem)
+                }
+
+                return res.json(result.GerarNfseResult)
+            })
+        })
     }
 
     const consultarNfse = async (req, res) => {
