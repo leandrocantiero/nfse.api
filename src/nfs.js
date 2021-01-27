@@ -1,6 +1,5 @@
 const soap = require('soap');
 const url = process.env.NFS_URL;
-const axios = require('axios');
 
 const { isCNPJ } = require('brazilian-values')
 
@@ -21,7 +20,7 @@ const options = {
 // http://schemas.xmlsoap.org/soap/envelope/
 
 module.exports = app => {
-    const { existsOrError } = app.config.validation
+    const { existsOrError, parseNumber } = app.config.validation
 
     const statusService = async (req, res) => {
         soap.createClient(url, options, function (err, client) {
@@ -78,32 +77,9 @@ module.exports = app => {
                 return res.status(500).send('Não foi possível conectar-se ao servidor da prefeitura')
             }
 
-            console.log({
-                Valores: {
-                    ValorServicos: data.prestacaoServico.valorServicos,
-                    ValorDeducoes: 0,
-                    ValorPis: 0,
-                    ValorCofins: 0,
-                    ValorInss: 0,
-                    ValorIr: 0,
-                    ValorCsll: 0,
-                    issRetido: 0,
-                    ValorIss: 0,
-                    OutrasRetencoes: 0,
-                    BaseCalculo: data.prestacaoServico.valorServicos,
-                    Aliquota: data.prestacaoServico.imposto.iss
-                },
-                ItemListaServico: data.prestacaoServico.imposto.enquadramentoServico,
-                CodigoCnae: data.prestacaoServico.imposto.cnae,
-                CodigoTributacaoMunicipio: data.prestacaoServico.imposto.enquadramentoServico,
-                Discriminacao: data.prestacaoServico.observacao,
-                CodigoMunicipio: '3541406',
-                ItensServico: data.prestacaoServico.servicos
-            })
             // return res.status(500).send('Função em desenvolvimento')
 
             const server = client.NfseService.BasicHttpBinding_INfseService
-
             server.GerarNfse({
                 GerarNovaNfseEnvio: {
                     Prestador: {
@@ -111,12 +87,11 @@ module.exports = app => {
                         InscricaoMunicipal: data.inscricaoMunicipal
                     },
                     InformacaoNfse: {
-                        NaturezeOperacao: 1,
+                        NaturezaOperacao: 1,
                         RegimeEspecialTributacao: 6,
                         OptanteSimplesNacional: data.prestacaoServico.imposto.simplesNacional ? 1 : 2,
-                        IcentivadorCultural: 2,
+                        IncentivadorCultural: 2,
                         Status: 1,
-                        Serie: 'E',
                         Competencia: new Date(data.prestacaoServico.dataPrestacaoServico).toISOString().substr(0, 10),
                         OutrasInformacoes: data.prestacaoServico.descricao,
                         Servico: {
@@ -138,22 +113,21 @@ module.exports = app => {
                             CodigoCnae: data.prestacaoServico.imposto.cnae,
                             CodigoTributacaoMunicipio: data.prestacaoServico.imposto.enquadramentoServico,
                             Discriminacao: data.prestacaoServico.observacao,
-                            CodigoMunicipio: '3541406',
                             ItensServico: data.prestacaoServico.servicos
                         },
                         Tomador: {
+                            RazaoSocial: data.prestacaoServico.pessoa.nome,
                             IdentificacaoTomador: {
-                                RazaoSocial: data.prestacaoServico.pessoa.nome,
                                 CpfCnpj: data.prestacaoServico.pessoa.cpfCnpj,
                                 InscricaoEstadual: data.prestacaoServico.pessoa.registro,
                             },
                             Endereco: {
-                                Cep: data.prestacaoServico.pessoa.cep,
-                                Uf: data.prestacaoServico.pessoa.uf,
+                                Cep: data.prestacaoServico.pessoa.cep.replace(/[^\d]+/g, ''),
+                                Uf: data.prestacaoServico.pessoa.estado,
                                 Bairro: data.prestacaoServico.pessoa.bairro,
                                 Endereco: data.prestacaoServico.pessoa.logradouro,
-                                Numero: data.prestacaoServico.pessoa.numero,
-                                Complemento: data.prestacaoServico.pessoa.complemento
+                                Numero: parseNumber(data.prestacaoServico.pessoa.numero),
+                                Complemento: data.prestacaoServico.pessoa.complemento || '',
                             },
                             Contato: {
                                 Telefone: data.prestacaoServico.pessoa.contato1,
@@ -163,15 +137,17 @@ module.exports = app => {
                     }
                 },
                 pParam: { P1: data.cnpj, P2: data.senha }
-            }, (err, result, xmlResponseString) => {
+            }, (err, result, responseXML, param, requestXML) => {
+                // console.log(requestXML)
                 if (err) {
                     if (err.response.statusCode == 500)
-                        return res.status(500).send('Erro no servidor da prefeitura ao gerar NFSe, tente novamente mais tarde')
+                        return res.status(500).send('Erro no servidor da prefeitura ao gerar a NFSe, tente novamente mais tarde')
 
-                    return res.status(500).send('Erro ao gerar NFSe, verifique os dados da prestação de serviço e impostos')
+                    return res.status(500).send('Erro ao gerar a NFSe, verifique os dados da prestação de serviço e impostos')
                 }
 
-                console.log(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
+                // console.log(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
+                // console.log(result.GerarNfseResult)
 
                 if (result.GerarNfseResult.ListaMensagemRetorno && result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno) {
                     if (Array.isArray(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno))
@@ -181,6 +157,8 @@ module.exports = app => {
 
                 return res.json(result.GerarNfseResult)
             })
+
+
         })
     }
 

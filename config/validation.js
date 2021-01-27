@@ -19,13 +19,13 @@ module.exports = app => {
     //     if (valueA !== valueB) throw msg
     // }
 
-    // function parseNumber(number, decimalpoint = ",") {
-    //     if (!number) return 0;
-        
-    //     var p = number.split(decimalpoint);
-    //     for (var i = 0; i < p.length; i++) p[i] = p[i].replace(/\D/g, "");
-    //     return parseFloat(p.join("."));
-    // }
+    function parseNumber(number, decimalpoint = ",") {
+        if (!number) return 0;
 
-    return { existsOrError, notExistsOrError }
+        var p = number.split(decimalpoint);
+        for (var i = 0; i < p.length; i++) p[i] = p[i].replace(/\D/g, "");
+        return parseFloat(p.join("."));
+    }
+
+    return { existsOrError, notExistsOrError, parseNumber }
 }
