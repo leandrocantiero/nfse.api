@@ -24,6 +24,8 @@
     "express": "^4.17.1",
     "html-pdf": "^2.2.0",
     "jwt-simple": "^0.5.6",
+    "nodemailer": "^6.4.17",
+    "nodemailer-express-handlebars": "^4.0.0",
     "passport": "0.4.0",
     "passport-jwt": "^4.0.0",
     "soap": "^0.35.0",

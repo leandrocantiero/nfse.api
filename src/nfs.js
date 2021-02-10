@@ -365,7 +365,7 @@ module.exports = app => {
             }, (err, result, xmlResponseString) => {
                 if (err) {
                     console.log(err);
-                    return res.status(500).send('Erro ao consultar Nota fiscal')
+                    return res.status(500).send('Erro ao consultar Nota fiscal, tente novamente mais tarde')
                 }
 
                 if (result.ConsultarNfseResult.ListaMensagemRetorno && result.ConsultarNfseResult.ListaMensagemRetorno.MensagemRetorno) {
