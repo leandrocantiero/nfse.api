@@ -77,8 +77,6 @@ module.exports = app => {
                 return res.status(500).send('Não foi possível conectar-se ao servidor da prefeitura')
             }
 
-            // return res.status(500).send('Função em desenvolvimento')
-
             const server = client.NfseService.BasicHttpBinding_INfseService
             server.GerarNfse({
                 GerarNovaNfseEnvio: {
@@ -317,15 +315,6 @@ module.exports = app => {
     }
 
     const consultarNfsePorRps = async (req, res) => { }
-
-    // const saveXml = (nome = "temp", xmlString) => {
-    //     fs.writeFile(`${nome}.xml`, xmlResponseString, function (err) {
-    //         if (err) {
-    //             console.log(err)
-    //             return
-    //         }
-    //     });
-    // }
 
     const gerarPdf = async (req, res) => {
         const data = { ...req.body }
