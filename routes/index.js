@@ -1,17 +1,20 @@
 module.exports = app => {
-    // Funções RPS
-
-    app.route('/recepcionarLoteRps')
-    // .all(app.config.passport.authenticate())
-    app.route('/consultarSituacaoLoteRps')
-        // .all(app.config.passport.authenticate())
-        .post(app.src.nfs.consultarSituacaoLoteRps)
-    app.route('/ConsultarNfsePorRps')
-        // .all(app.config.passport.authenticate())
-        .post(app.src.nfs.consultarNfsePorRps)
-    app.route('/consultarLoteRps')
-        // .all(app.config.passport.authenticate())
-        .post(app.src.nfs.consultarLoteRps)
+    app.get('/', (req, res) => {
+        res.status(200).send(`Versão ${process.env.VERSION}`)
+    })
+    
+    // // Funções RPS
+    // app.route('/recepcionarLoteRps')
+    // // .all(app.config.passport.authenticate())
+    // app.route('/consultarSituacaoLoteRps')
+    //     // .all(app.config.passport.authenticate())
+    //     .post(app.src.nfs.consultarSituacaoLoteRps)
+    // app.route('/ConsultarNfsePorRps')
+    //     // .all(app.config.passport.authenticate())
+    //     .post(app.src.nfs.consultarNfsePorRps)
+    // app.route('/consultarLoteRps')
+    //     // .all(app.config.passport.authenticate())
+    //     .post(app.src.nfs.consultarLoteRps)
 
 
     // Funções Nfse
@@ -22,12 +25,12 @@ module.exports = app => {
     app.route('/gerarNfse')
         // .all(app.config.passport.authenticate())
         .post(app.src.nfs.gerarNfse)
-    app.route('/consultarNfse/:notaFiscal')
+    app.route('/consultarNfse')
         // .all(app.config.passport.authenticate())
         .post(app.src.nfs.consultarNfse)
-    app.route('/cancelarNfse/:notaFiscal')
+    app.route('/cancelarNfse')
         // .all(app.config.passport.authenticate())
-        .delete(app.src.nfs.cancelarNfse)
+        .post(app.src.nfs.cancelarNfse)
 
     app.route('/gerarPdf')
         // .all(app.config.passport.authenticate())
@@ -35,4 +38,8 @@ module.exports = app => {
     app.route('/enviarNfseEmail')
         // .all(app.config.passport.authenticate())
         .post(app.src.email.enviarNfseEmail)
+
+    app.get('*', function (req, res) {
+        res.status(404).send('Erro 404');
+    });
 }
