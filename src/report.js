@@ -58,7 +58,6 @@ module.exports = {
                     left: 65mm;
                     z-index: 3;
                     opacity: 0.8;
-                    display: none;
                 }
         
                 .nfeArea.invoiceCanceled .imgCanceled {
@@ -372,13 +371,12 @@ module.exports = {
         <body>
             <script src="js/libs/jquery-barcode-2.0.1.min.js" type="text/javascript"></script>
             <div id="print" class="nfeArea">
-                <img class="imgCanceled" src="tarja_nf_cancelada.png" alt="" />
-                <img class="imgNull" src="tarja_nf_semvalidade.png" alt="" />
+                <img class="imgCanceled" src="${params.MotivoCancelamento ? `${process.env.API_URL}/uploads/imgs/tarja-cancelada.png"` : ''}" />
+                <!-- <img class="imgNull" src="${process.env.API_URL}/uploads/imgs/tarja-cancelada.png" alt="img-semvalidade" /> -->
 
                 <table class="tabela" style="width: 100%;">
                     <tr>
                         <td style="width: 40%; height: 100px;" rowspan="3">
-        
                             <table style="width: 100%; height: 108px;">
                                 <tr>
                                     <td style="width: 33%; vertical-align: middle;">

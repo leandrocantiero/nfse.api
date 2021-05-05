@@ -187,7 +187,7 @@ module.exports = app => {
                         Tomador: {
                             IdentificacaoTomador: {
                                 CpfCnpj: { Cnpj: data.prestacaoServico.pessoa.cpfCnpj.replace(/[^\d]+/g, '') },
-                                InscricaoEstadual: data.prestacaoServico.pessoa.registro.replace(/[^\d]+/g, ''),
+                                InscricaoEstadual: data.prestacaoServico.pessoa.registro ? data.prestacaoServico.pessoa.registro.replace(/[^\d]+/g, '') : '',
                             },
                             RazaoSocial: data.prestacaoServico.pessoa.nome,
                             Endereco: {
@@ -211,7 +211,7 @@ module.exports = app => {
             }, (err, result, responseXML, param, requestXML) => {
                 console.log(requestXML)
                 if (err) {
-                    console.log(err.response)
+                    console.log(err.response.statusCode)
                     if (err.response.statusCode == 500)
                         return res.status(500).send('Erro no servidor da prefeitura ao gerar a NFSe, tente novamente mais tarde')
 
@@ -219,10 +219,13 @@ module.exports = app => {
                 }
 
                 if (result.GerarNfseResult.ListaMensagemRetorno && result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno) {
-                    console.log(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
+                    // console.log(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
                     if (Array.isArray(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno))
-                        return res.status(400).send(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno[0].Mensagem)
-                    return res.status(400).send(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno.Mensagem)
+                        return res.status(400).send(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
+                    
+                    if (result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno.Codigo = "E900")
+                        return res.status(500).send(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
+                    return res.status(400).send(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
                 }
 
                 console.log(result.GerarNfseResult.NovaNfse.IdentificacaoNfse)
@@ -400,7 +403,6 @@ module.exports = app => {
 
                 pdfGenerator.create(reports.danfseHtml(result.ConsultarNfseResult.ListaNfse.CompNfse.Nfse.InfNfse), options).toFile(`./pdfs/${numeroNotaFiscal}.pdf`, function (err, file) {
                     if (err) return res.status(500).send('Erro ao gerar PDF, tente novamente mais tarde')
-                    // console.log(response); // { filename: 'views/banco.pdf' } 
 
                     res.status(200).send(`pdfs/${numeroNotaFiscal}.pdf`)
                 });
