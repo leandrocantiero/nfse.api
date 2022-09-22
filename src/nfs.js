@@ -88,59 +88,6 @@ module.exports = app => {
             }
 
             const contrato = data.prestacaoServico.contrato
-            // console.log({
-            //     Servico: {
-            //         Valores: {
-            //             ValorServicos: data.prestacaoServico.valorServicos,
-            //             ValorDeducoes: 0,
-            //             ValorPis: 0,
-            //             ValorCofins: 0,
-            //             ValorInss: 0,
-            //             ValorIr: 0,
-            //             ValorCsll: 0,
-            //             IssRetido: contrato ? (contrato.retencaoIss ? 1 : 2) : 2,
-            //             ValorIss: Number(data.prestacaoServico.valorServicos * (data.prestacaoServico.imposto.iss / 100)).toFixed(2),
-            //             ValorIssRetido: contrato && contrato.retencaoIss ?
-            //                 Number(data.prestacaoServico.valorServicos * (data.prestacaoServico.imposto.iss / 100)).toFixed(2) : 0,
-            //             OutrasRetencoes: 0,
-            //             BaseCalculo: data.prestacaoServico.valorServicos,
-            //             Aliquota: data.prestacaoServico.imposto.iss,
-            //             ValorLiquidoNfse: data.prestacaoServico.valorServicos -
-            //                 (contrato && contrato.retencaoIss ?
-            //                     Number(data.prestacaoServico.valorServicos * (data.prestacaoServico.imposto.iss / 100)).toFixed(2) : 0)
-            //         },
-            //         ItemListaServico: data.prestacaoServico.imposto.enquadramentoServico,
-            //         CodigoCnae: data.prestacaoServico.imposto.cnae,
-            //         CodigoTributacaoMunicipio: data.prestacaoServico.imposto.enquadramentoServico,
-            //         Discriminacao: data.prestacaoServico.observacao,
-            //         CodigoMunicipio: '3541406',
-            //         ItensServico: data.prestacaoServico.servicos
-            //     },
-            //     Tomador: {
-            //         IdentificacaoTomador: {
-            //             CpfCnpj: { Cnpj: data.prestacaoServico.pessoa.cpfCnpj.replace(/[^\d]+/g, '') },
-            //             InscricaoEstadual: data.prestacaoServico.pessoa.registro.replace(/[^\d]+/g, ''),
-            //         },
-            //         RazaoSocial: data.prestacaoServico.pessoa.nome,
-            //         Endereco: {
-            //             Endereco: data.prestacaoServico.pessoa.logradouro,
-            //             Numero: parseNumber(data.prestacaoServico.pessoa.numero),
-            //             Bairro: data.prestacaoServico.pessoa.bairro,
-            //             CodigoMunicipio: data.prestacaoServico.pessoa.codigoMunicipio,
-            //             Cidade: data.prestacaoServico.pessoa.cidade,
-            //             Uf: data.prestacaoServico.pessoa.estado,
-            //             Cep: data.prestacaoServico.pessoa.cep.replace(/[^\d]+/g, ''),
-            //             Complemento: data.prestacaoServico.pessoa.complemento || '',
-            //         },
-            //         Contato: {
-            //             Telefone: data.prestacaoServico.pessoa.contato1.replace(/[^\d]+/g, ''),
-            //             Email: data.prestacaoServico.pessoa.email1
-            //         }
-            //     }
-            // })
-
-            // return res.status(500).send('a')
-
             const server = client.NfseService.BasicHttpBinding_INfseService
             server.GerarNfse({
                 GerarNovaNfseEnvio: {
@@ -154,6 +101,7 @@ module.exports = app => {
                         OptanteSimplesNacional: data.prestacaoServico.imposto.simplesNacional ? 1 : 2,
                         IncentivadorCultural: 2,
                         Status: 1,
+                        NfseSubstituida: data.prestacaoServico.notaFiscalSubstituida,
 
                         Competencia: new Date().toISOString().substr(0, 10),
                         OutrasInformacoes: data.prestacaoServico.descricao,
@@ -209,7 +157,6 @@ module.exports = app => {
                 },
                 pParam: { P1: data.cnpj, P2: data.senha }
             }, (err, result, responseXML, param, requestXML) => {
-                console.log(requestXML)
                 if (err) {
                     console.log(err.response.statusCode)
                     if (err.response.statusCode == 500)
@@ -222,7 +169,7 @@ module.exports = app => {
                     // console.log(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
                     if (Array.isArray(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno))
                         return res.status(400).send(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
-                    
+
                     if (result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno.Codigo = "E900")
                         return res.status(500).send(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
                     return res.status(400).send(result.GerarNfseResult.ListaMensagemRetorno.MensagemRetorno)
@@ -317,12 +264,15 @@ module.exports = app => {
 
             server.CancelarNfse({
                 CancelarNfseEnvio: {
-                    Prestador: {
-                        Cnpj: data.cnpj,
-                        InscricaoMunicipal: data.inscricaoMunicipal
-                    },
+                    // Prestador: {
+                    //     Cnpj: data.cnpj,
+                    //     InscricaoMunicipal: data.inscricaoMunicipal
+                    // },
                     Pedido: {
                         InfPedidoCancelamento: {
+                            // 1 - Lançamento indevido
+                            // 2 - Erro de digitação
+                            CodigoCancelamento: 1,
                             IdentificacaoNfse: {
                                 Numero: data.notaFiscal,
                                 Cnpj: data.cnpj,
@@ -339,15 +289,15 @@ module.exports = app => {
                     return res.status(500).send('Erro ao cancelar Nota fiscal')
                 }
 
-                console.log(result.CancelarNfseResult.ListaMensagemRetorno)
-
                 if (result.CancelarNfseResult.ListaMensagemRetorno && result.CancelarNfseResult.ListaMensagemRetorno.MensagemRetorno) {
                     if (Array.isArray(result.CancelarNfseResult.ListaMensagemRetorno.MensagemRetorno))
                         return res.status(400).send(result.CancelarNfseResult.ListaMensagemRetorno.MensagemRetorno[0].Mensagem)
                     return res.status(400).send(result.CancelarNfseResult.ListaMensagemRetorno.MensagemRetorno.Mensagem)
                 }
 
-                return res.json(result.CancelarNfseResult.ListaNfse.CompNfse)
+                console.log(result.CancelarNfseResult.NfseCancelamento)
+
+                return res.json(result.CancelarNfseResult.NfseCancelamento)
             })
         })
     }
@@ -401,11 +351,12 @@ module.exports = app => {
 
                 const numeroNotaFiscal = result.ConsultarNfseResult.ListaNfse.CompNfse.Nfse.InfNfse.Numero
 
-                pdfGenerator.create(reports.danfseHtml(result.ConsultarNfseResult.ListaNfse.CompNfse.Nfse.InfNfse), options).toFile(`./pdfs/${numeroNotaFiscal}.pdf`, function (err, file) {
-                    if (err) return res.status(500).send('Erro ao gerar PDF, tente novamente mais tarde')
+                pdfGenerator.create(reports.danfseHtml(result.ConsultarNfseResult.ListaNfse.CompNfse.Nfse.InfNfse), options)
+                    .toFile(`./pdfs/${numeroNotaFiscal}.pdf`, function (err, file) {
+                        if (err) return res.status(500).send('Erro ao gerar PDF, tente novamente mais tarde')
 
-                    res.status(200).send(`pdfs/${numeroNotaFiscal}.pdf`)
-                });
+                        res.status(200).send(`pdfs/${numeroNotaFiscal}.pdf`)
+                    });
             })
         })
     }
@@ -415,7 +366,6 @@ module.exports = app => {
         versaoNfse,
         gerarNfse,
         consultarNfse,
-        cancelarNfse,
         gerarPdf
     }
 }

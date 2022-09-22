@@ -28,9 +28,9 @@ module.exports = app => {
     app.route('/consultarNfse')
         // .all(app.config.passport.authenticate())
         .post(app.src.nfs.consultarNfse)
-    app.route('/cancelarNfse')
-        // .all(app.config.passport.authenticate())
-        .post(app.src.nfs.cancelarNfse)
+    // app.route('/cancelarNfse')
+    //     .all(app.config.passport.authenticate())
+    //     .post(app.src.nfs.cancelarNfse)
 
     app.route('/gerarPdf')
         // .all(app.config.passport.authenticate())

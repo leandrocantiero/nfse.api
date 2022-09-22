@@ -1,15 +1,17 @@
 {
-  "name": "api",
-  "version": "1.0.0",
-  "description": "",
+  "name": "quickblue-nfse",
+  "version": "0.1.0",
+  "description": "api de notas fiscais de serviço do sistema quickblue",
   "main": "index.js",
+  "private": true,
   "scripts": {
-    "dev": "nodemon"
+    "serve": "nodemon",
+    "start": "node index.js"
   },
   "author": "Leandro Cantiero",
   "license": "ISC",
   "engines": {
-    "node": "12"
+    "node": "16"
   },
   "dependencies": {
     "@sendgrid/mail": "^7.4.0",
