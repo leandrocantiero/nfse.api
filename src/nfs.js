@@ -96,6 +96,7 @@ module.exports = app => {
                         InscricaoMunicipal: data.inscricaoMunicipal
                     },
                     InformacaoNfse: {
+                        // Id: data.prestacaoServico.id.toString(),
                         NaturezaOperacao: 1,
                         RegimeEspecialTributacao: 6,
                         OptanteSimplesNacional: data.prestacaoServico.imposto.simplesNacional ? 1 : 2,
@@ -104,7 +105,7 @@ module.exports = app => {
                         NfseSubstituida: data.prestacaoServico.notaFiscalSubstituida,
 
                         Competencia: new Date().toISOString().substr(0, 10),
-                        OutrasInformacoes: data.prestacaoServico.descricao,
+                        OutrasInformacoes: `${data.prestacaoServico.descricao}, ${data.prestacaoServico.observacao}`,
                         Servico: {
                             Valores: {
                                 ValorServicos: data.prestacaoServico.valorServicos,

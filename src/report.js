@@ -602,7 +602,7 @@ module.exports = {
                                 <tr>
                                     <td class="campo_titulo"
                                         style="width: 50%; padding-left: 5px; vertical-align: top;">
-                                        <span class="campo_valor" id="dadosnfe_ds_additional_information">${params.Discriminacao || "Nenhuma informação adicional"}</span>
+                                        <span class="campo_valor" id="dadosnfe_ds_additional_information">${params.OutrasInformacoes || "Nenhuma informação adicional"}</span>
                                     </td>
                                 </tr>
                             </table>

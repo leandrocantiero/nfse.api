@@ -1,6 +1,6 @@
 {
   "name": "quickblue-nfse",
-  "version": "0.1.0",
+  "version": "1.5.0",
   "description": "api de notas fiscais de serviço do sistema quickblue",
   "main": "index.js",
   "private": true,
